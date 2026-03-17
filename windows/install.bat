@@ -132,8 +132,10 @@ echo.
 
 echo [6/8] 整理输出文件...
 :: 将dist目录下的文件夹移动到当前目录并重命名
-move "%DIST_DIR%\ipgw" "%OUTPUT_DIR%"
-if errorlevel 1 (
+:: 提前确保删除旧目标，用robocopy替代move避免交互式卡住
+if exist "%OUTPUT_DIR%" rmdir /s /q "%OUTPUT_DIR%"
+robocopy "%DIST_DIR%\ipgw" "%OUTPUT_DIR%" /e /move /nfl /ndl /njh /njs
+if errorlevel 8 (
     echo [错误] 移动文件失败
     pause
     exit /b 1
