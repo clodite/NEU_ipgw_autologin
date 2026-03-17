@@ -14,4 +14,11 @@
 ### Linux 系统
 1. 下载对应版本的压缩包
 2. 解压到任意目录
-3. 运行install.sh
+3. 运行 `install.sh` 脚本[^1]
+
+   [^1]:如果提示$'\r': command not found等换行符错误，可使用下面的命令安装工具进行换行符转换
+       ```
+       sudo apt update && sudo apt install dos2unix -y
+       dos2unix install.sh
+       ```
+   
