@@ -18,9 +18,32 @@ set "CHROMIUM_DIR=chromium"
 :: 检查Python是否安装
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 未检测到Python，请先安装Python并添加到PATH
-    pause
-    exit /b 1
+    echo [提示] 未检测到Python，将自动安装Python 3.11...
+    echo.
+    winget install Python.Python.3.11 --silent --accept-package-agreements --accept-source-agreements
+    if errorlevel 1 (
+        echo [错误] 自动安装Python失败，请手动下载安装Python并添加到PATH后重试
+        pause
+        exit /b 1
+    )
+    echo Python安装完成，刷新环境变量...
+    :: 添加默认安装路径到当前会话PATH
+    set "PY_USER_DIR=%LOCALAPPDATA%\Programs\Python\Python311"
+    set "PY_MACHINE_DIR=C:\Python311"
+    if exist "!PY_USER_DIR!\python.exe" (
+        set "PATH=!PY_USER_DIR!;!PY_USER_DIR!\Scripts;!PATH!"
+    ) else if exist "!PY_MACHINE_DIR!\python.exe" (
+        set "PATH=!PY_MACHINE_DIR!;!PY_MACHINE_DIR!\Scripts;!PATH!"
+    )
+    :: 重新验证Python安装
+    python --version >nul 2>&1
+    if errorlevel 1 (
+        echo [错误] Python安装后仍无法检测到，请手动安装后重试
+        pause
+        exit /b 1
+    )
+    echo Python安装成功，继续执行...
+    echo.
 )
 
 echo [1/8] 创建虚拟环境...
