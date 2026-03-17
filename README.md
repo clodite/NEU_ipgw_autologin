@@ -11,8 +11,7 @@
 2. 解压到任意目录（建议无中文、无空格路径）
 3. 双击运行 `install.bat` 脚本，等待安装完成
 
-### Linux/Mac 系统
+### Linux 系统
 1. 下载对应版本的压缩包
 2. 解压到任意目录
-   ```bash
-   unzip NEU_ipgw_autologin.zip -d NEU_ipgw_autologin
+3. 运行install.sh
