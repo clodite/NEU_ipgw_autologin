@@ -125,25 +125,42 @@ echo "[8/8] 创建自启动配置..."
 # 获取当前脚本所在目录
 SCRIPT_DIR=$(pwd)
 AUTOSTART_DIR="$HOME/.config/autostart"
-DESKTOP_FILE="$AUTOSTART_DIR/ipgw.desktop"
+START_SCRIPT="$OUTPUT_DIR/start.sh"
+DESKTOP_FILE="$AUTOSTART_DIR/ipgw_terminal.desktop"
+
+# 1. 在ipgw_app目录创建start.sh启动脚本
+cat > "$START_SCRIPT" << EOF
+#!/bin/bash
+cd "$SCRIPT_DIR/$OUTPUT_DIR"
+./ipgw
+EOF
+
+# 给启动脚本添加执行权限
+chmod +x "$START_SCRIPT"
+echo "start.sh启动脚本创建完成"
 
 # 创建autostart目录（如果不存在）
 mkdir -p "$AUTOSTART_DIR"
 
-# 创建.desktop文件
+# 清理旧的自启动配置避免冲突
+rm -f "$AUTOSTART_DIR/ipgw.desktop" "$DESKTOP_FILE"
+
+# 2. 创建符合要求的.desktop自启动文件
 cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Type=Application
-Name=IPGW登录工具
-Exec="$SCRIPT_DIR/$OUTPUT_DIR/ipgw"
-Path="$SCRIPT_DIR/$OUTPUT_DIR"
-Terminal=true
+Name=IPGW自动登录
+Comment=开机弹出终端运行校园网登录
+Exec=gnome-terminal -- bash -c "cd $SCRIPT_DIR/$OUTPUT_DIR && ./start.sh"
+Path=$SCRIPT_DIR/$OUTPUT_DIR
+Terminal=false
+StartupNotify=false
 EOF
 
-# 设置执行权限
+# 设置自启动文件执行权限
 chmod +x "$DESKTOP_FILE"
 
-if [ -f "$DESKTOP_FILE" ]; then
+if [ -f "$DESKTOP_FILE" ] && [ -f "$START_SCRIPT" ]; then
     echo "自启动配置创建成功"
 else
     echo "[警告] 自启动配置创建可能失败，请手动检查"
