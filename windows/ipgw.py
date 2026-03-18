@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import time
+import threading
 
 config_file = "data.json"
 username = ""
@@ -188,5 +189,25 @@ with sync_playwright() as p:
         # 关闭浏览器
         # ==========================================
         browser.close()
-        print("程序已结束")
-        input("按任意键退出...")
+        auto_exit = True
+
+        # 倒计时线程
+        def count_down():
+            remaining = 3
+            while remaining > 0 and auto_exit:
+                print(
+                    f"\r将在 {remaining} 秒后自动退出，按任意键停止退出...",
+                    end="",
+                    flush=True,
+                )
+                time.sleep(1)
+                remaining -= 1
+            if auto_exit:
+                sys.exit(0)
+
+        # 启动倒计时
+        threading.Thread(target=count_down, daemon=True).start()
+        # 等待用户输入
+        input()
+        auto_exit = False
+        print("\n已停止自动退出")
