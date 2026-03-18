@@ -104,7 +104,7 @@ def printInfo(auth_page: Page):
     # ==========================================
     # 等待登录成功后的页面核心元素加载
     auth_page.wait_for_selector("#username", state="visible")
-    print("当前已登录，获取用户信息...")
+    print("当前已登录，获取用户信息...", flush=True)
 
     # 精准匹配5个字段的ID选择器
     user_account = auth_page.inner_text("#username")
@@ -223,10 +223,13 @@ with sync_playwright() as p:
         auth_page = None
         try:
             page.wait_for_selector("#logout", state="visible", timeout=3000)
-            print("检测到已登录状态")
+            print("检测到已登录状态", flush=True)
             printInfo(page)
             print("", end="", flush=True)
             auth_page = page
+
+            # 新增：强制刷新所有缓冲区，确保内容全部输出后再修改终端模式
+            sys.stdout.flush()
 
             # 3秒超时输入，默认不登出
             user_input = timed_prompt(
