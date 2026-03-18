@@ -114,14 +114,14 @@ def printInfo(auth_page: Page):
     ip_address = auth_page.inner_text("#ipv4")
 
     # 格式化打印结果
-    print("=" * 40)
-    print(f"用户账号：{user_account}")
-    print(f"已用流量：{used_flow}")
-    print(f"已用时长：{used_time}")
-    print(f"账户余额：{account_balance}")
-    print(f"IP 地址：{ip_address}")
-    print("=" * 40)
-    print("信息获取完成")
+    print("=" * 40, flush=True)
+    print(f"用户账号：{user_account}", flush=True)
+    print(f"已用流量：{used_flow}", flush=True)
+    print(f"已用时长：{used_time}", flush=True)
+    print(f"账户余额：{account_balance}", flush=True)
+    print(f"IP 地址：{ip_address}", flush=True)
+    print("=" * 40, flush=True)
+    print("信息获取完成", flush=True)
 
 
 def logout(page: Page):
