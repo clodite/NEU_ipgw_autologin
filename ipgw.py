@@ -7,8 +7,6 @@ import threading
 import platform
 
 config_file = "data.json"
-username = ""
-password = ""
 
 
 def get_resource_path(relative_path):
@@ -20,6 +18,48 @@ def get_resource_path(relative_path):
         # 如果是开发环境，使用当前文件所在目录
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+
+def load_config(config_file: str) -> tuple[str, str]:
+    """加载配置文件，不存在或无效则提示用户输入并保存配置"""
+    username = ""
+    password = ""
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                username = config.get("username", "").strip()
+                password = config.get("password", "").strip()
+        except Exception as e:
+            print(f"读取配置文件失败: {str(e)}")
+
+    if not username or not password:
+        print("未找到有效账号密码配置，请输入统一身份认证信息")
+        # 循环校验账号输入
+        while True:
+            username_input = input("请输入学号/账号: ").strip()
+            if username_input:
+                username = username_input
+                break
+            print("账号不能为空，请重新输入")
+
+        # 循环校验密码输入
+        while True:
+            password_input = input("请输入密码: ").strip()
+            if password_input:
+                password = password_input
+                break
+            print("密码不能为空，请重新输入")
+
+        # 保存配置到json文件
+        config_data = {"username": username, "password": password}
+        try:
+            with open(config_file, "w", encoding="utf-8") as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+            print(f"配置已保存到 {os.path.abspath(config_file)}")
+        except Exception as e:
+            print(f"保存配置文件失败: {str(e)}")
+    return username, password
 
 
 def login(page: Page, username: str, password: str) -> Page:
@@ -101,41 +141,57 @@ def logout(page: Page):
     time.sleep(1)
 
 
-if os.path.exists(config_file):
+def get_single_key():
+    """跨平台获取单个按键，无需按回车"""
     try:
-        with open(config_file, "r", encoding="utf-8") as f:
-            config = json.load(f)
-            username = config.get("username", "").strip()
-            password = config.get("password", "").strip()
-    except Exception as e:
-        print(f"读取配置文件失败: {str(e)}")
+        # Windows 系统适配
+        import msvcrt
 
-if not username or not password:
-    print("未找到有效账号密码配置，请输入统一身份认证信息")
-    # 循环校验账号输入
-    while True:
-        username_input = input("请输入学号/账号: ").strip()
-        if username_input:
-            username = username_input
-            break
-        print("账号不能为空，请重新输入")
+        return msvcrt.getch().decode("utf-8", errors="ignore").lower()
+    except ImportError:
+        # Linux/macOS 系统适配
+        import sys, termios, tty
 
-    # 循环校验密码输入
-    while True:
-        password_input = input("请输入密码: ").strip()
-        if password_input:
-            password = password_input
-            break
-        print("密码不能为空，请重新输入")
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            return sys.stdin.read(1).lower()
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
 
-    # 保存配置到json文件
-    config_data = {"username": username, "password": password}
-    try:
-        with open(config_file, "w", encoding="utf-8") as f:
-            json.dump(config_data, f, indent=4, ensure_ascii=False)
-        print(f"配置已保存到 {os.path.abspath(config_file)}")
-    except Exception as e:
-        print(f"保存配置文件失败: {str(e)}")
+
+def timed_prompt(prompt: str, timeout: int, default_value, allowed_keys: list = None):
+    result = [None]
+
+    def wait_key():
+        while result[0] is None:
+            key = get_single_key()
+            if allowed_keys is None or key in allowed_keys:
+                result[0] = key
+                return
+
+    thread = threading.Thread(target=wait_key, daemon=True)
+    thread.start()
+
+    remaining = timeout
+    # 循环等待，实时刷新剩余时间
+    while remaining > 0 and result[0] is None:
+        # 利用\r回到行首覆盖输出，实现实时刷新
+        print(f"\r{prompt}剩余 {remaining} 秒", end="", flush=True)
+        time.sleep(1)
+        remaining -= 1
+
+    if result[0] is None:
+        print(f"\r{prompt}超时，默认选择 [{default_value}] {' ' * 10}", flush=True)
+        return default_value
+
+    # 用户输入后，清理行并输出用户选择
+    print(f"\r{prompt}你选择了 [{result[0]}] {' ' * 10}", flush=True)
+    return result[0]
+
+
+username, password = load_config(config_file)
 
 
 with sync_playwright() as p:
@@ -171,17 +227,17 @@ with sync_playwright() as p:
             printInfo(page)
             auth_page = page
 
-            # 询问用户是否登出
-            while True:
-                user_input = input("是否要登出账号？(y/n): ").strip().lower()
-                if user_input in ["y", "n"]:
-                    break
-                print("请输入 y 或 n")
-
+            # 3秒超时输入，默认不登出
+            user_input = timed_prompt(
+                prompt="是否要登出账号？(y/n，3秒未输入默认n): ",
+                timeout=3,
+                default_value="n",
+                allowed_keys=["y", "n"],
+            )
+            if user_input == "n":
+                print("\n3秒未输入或用户选择不登出，即将关闭浏览器")
             if user_input == "y":
                 logout(auth_page)
-            else:
-                print("用户选择不登出，即将关闭浏览器")
 
         except:
             print("未检测到已登录状态，开始登录流程")
@@ -195,25 +251,12 @@ with sync_playwright() as p:
         # 关闭浏览器
         # ==========================================
         browser.close()
-        auto_exit = True
-
-        # 倒计时线程
-        def count_down():
-            remaining = 3
-            while remaining > 0 and auto_exit:
-                print(
-                    f"\r将在 {remaining} 秒后自动退出，按任意键停止退出...",
-                    end="",
-                    flush=True,
-                )
-                time.sleep(1)
-                remaining -= 1
-            if auto_exit:
-                sys.exit(0)
-
-        # 启动倒计时
-        threading.Thread(target=count_down, daemon=True).start()
-        # 等待用户输入
-        input()
-        auto_exit = False
-        print("\n已停止自动退出")
+        # 倒计时3秒自动退出，实时打印剩余时间
+        remaining = 3
+        while remaining > 0:
+            # 用\r回到行首覆盖上一次输出，实现实时刷新
+            print(f"\r将在 {remaining} 秒后自动退出程序...", end="", flush=True)
+            time.sleep(1)
+            remaining -= 1
+        print("\n倒计时结束，退出程序")
+        sys.exit(0)

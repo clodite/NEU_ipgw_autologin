@@ -115,6 +115,12 @@ echo Chromium文件复制完成
 echo.
 
 echo [5/8] 打包程序...
+:: ✅ 先备份旧配置文件（在删除旧输出目录之前操作）
+if exist "data.json.tmp" del "data.json.tmp" >nul
+if exist "%OUTPUT_DIR%\data.json" (
+    echo 检测到旧配置文件data.json，正在备份...
+    copy /y "%OUTPUT_DIR%\data.json" "data.json.tmp" >nul
+)
 :: 删除旧的构建目录
 if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 if exist "%DIST_DIR%" rmdir /s /q "%DIST_DIR%"
@@ -124,6 +130,8 @@ if exist "%OUTPUT_DIR%" rmdir /s /q "%OUTPUT_DIR%"
 pyinstaller --name "ipgw" --onedir --add-data "%CHROMIUM_DIR%;chromium" "%SCRIPT_NAME%"
 if errorlevel 1 (
     echo [错误] 打包失败
+    :: 打包失败的话清理临时备份文件
+    if exist "data.json.tmp" del "data.json.tmp" >nul
     pause
     exit /b 1
 )
@@ -137,13 +145,24 @@ if exist "%OUTPUT_DIR%" rmdir /s /q "%OUTPUT_DIR%"
 robocopy "%DIST_DIR%\ipgw" "%OUTPUT_DIR%" /e /move /nfl /ndl /njh /njs
 if errorlevel 8 (
     echo [错误] 移动文件失败
+    :: 移动失败清理临时备份文件
+    if exist "data.json.tmp" del "data.json.tmp" >nul
     pause
     exit /b 1
+)
+:: 恢复旧配置文件到新目录
+if exist "data.json.tmp" (
+    echo 恢复旧配置文件data.json...
+    move /y "data.json.tmp" "%OUTPUT_DIR%\data.json" >nul
+    echo 旧配置已成功保留
 )
 echo 输出文件整理完成
 echo.
 
+
 echo [7/8] 清理临时文件...
+:: 额外清理可能残留的配置备份文件
+if exist "data.json.tmp" del "data.json.tmp" >nul
 :: 删除虚拟环境、构建目录、dist目录、chromium目录、spec文件
 rmdir /s /q "%VENV_DIR%"
 rmdir /s /q "%BUILD_DIR%"
@@ -180,4 +199,3 @@ echo 你可以:
 echo 1. 直接运行 %OUTPUT_DIR%\ipgw.exe 测试程序
 echo 2. 重启电脑测试自启动功能
 echo.
-pause

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# 新增：异常退出时自动清理临时配置备份，避免残留文件
+trap 'if [ -f "data.json.tmp" ]; then rm -f "data.json.tmp"; fi' EXIT
+
 echo "========================================"
 echo "IPGW 自动打包和自启动设置脚本"
 echo "========================================"
@@ -70,6 +73,12 @@ echo "Chromium文件复制完成"
 echo ""
 
 echo "[5/8] 打包程序..."
+# ✅ 先备份旧配置文件（在删除旧输出目录之前操作）
+if [ -f "data.json.tmp" ]; then rm -f "data.json.tmp"; fi
+if [ -f "$OUTPUT_DIR/data.json" ]; then
+    echo "检测到旧配置文件data.json，正在备份..."
+    cp -f "$OUTPUT_DIR/data.json" "data.json.tmp"
+fi
 # 删除旧的构建目录
 if [ -d "$BUILD_DIR" ]; then
     rm -rf "$BUILD_DIR"
@@ -87,12 +96,20 @@ echo "打包成功"
 echo ""
 
 echo "[6/8] 整理输出文件..."
-# 将dist目录下的文件夹移动到当前目录并重命名
-mv "$DIST_DIR/ipgw" "$OUTPUT_DIR"
+# 将dist目录下的文件夹移动到当前目录并重命名，加-f避免覆盖提示
+mv -f "$DIST_DIR/ipgw" "$OUTPUT_DIR"
+# 恢复旧配置文件到新目录
+if [ -f "data.json.tmp" ]; then
+    echo "恢复旧配置文件data.json..."
+    mv -f "data.json.tmp" "$OUTPUT_DIR/data.json"
+    echo "旧配置已成功保留"
+fi
 echo "输出文件整理完成"
 echo ""
 
 echo "[7/8] 清理临时文件..."
+# 额外清理可能残留的配置备份文件
+if [ -f "data.json.tmp" ]; then rm -f "data.json.tmp"; fi
 # 删除虚拟环境、构建目录、dist目录、chromium目录、spec文件
 rm -rf "$VENV_DIR"
 rm -rf "$BUILD_DIR"
