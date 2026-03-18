@@ -177,17 +177,17 @@ def timed_prompt(prompt: str, timeout: int, default_value, allowed_keys: list = 
     remaining = timeout
     # 循环等待，实时刷新剩余时间
     while remaining > 0 and result[0] is None:
-        # 利用\r回到行首覆盖输出，实现实时刷新
-        print(f"\r{prompt}剩余 {remaining} 秒", end="", flush=True)
+        # 利用\r回到行首+清除行尾，实现干净的实时刷新
+        print(f"\r\033[K{prompt}剩余 {remaining} 秒", end="", flush=True)
         time.sleep(1)
         remaining -= 1
 
     if result[0] is None:
-        print(f"\r{prompt}超时，默认选择 [{default_value}] {' ' * 10}", flush=True)
+        print(f"\r\033[K{prompt}超时，默认选择 [{default_value}]", flush=True)
         return default_value
 
     # 用户输入后，清理行并输出用户选择
-    print(f"\r{prompt}你选择了 [{result[0]}] {' ' * 10}", flush=True)
+    print(f"\r\033[K{prompt}你选择了 [{result[0]}]", flush=True)
     return result[0]
 
 
@@ -254,8 +254,8 @@ with sync_playwright() as p:
         # 倒计时3秒自动退出，实时打印剩余时间
         remaining = 3
         while remaining > 0:
-            # 用\r回到行首覆盖上一次输出，实现实时刷新
-            print(f"\r将在 {remaining} 秒后自动退出程序...", end="", flush=True)
+            # 用\r回到行首+清除行尾，实现干净的实时刷新
+            print(f"\r\033[K将在 {remaining} 秒后自动退出程序...", end="", flush=True)
             time.sleep(1)
             remaining -= 1
         print("\n倒计时结束，退出程序")
